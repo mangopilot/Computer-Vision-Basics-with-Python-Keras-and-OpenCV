@@ -31,7 +31,7 @@ class GestureRecognizer:
         self.kernel = np.ones((3, 3), np.uint8)
         self.recognizer = load_model(model_path)
         self.is_tracking = False
-        self.hand_bbox = (116, 116, 170, 170)
+        self.hand_bbox = (100, 100, 170, 170)
 
         # Begin capturing video
         self.video = cv2.VideoCapture(capture)
@@ -73,10 +73,12 @@ class GestureRecognizer:
         return foreground, img_dilation
 
     def run(self):
-        # Capture, process, display loop    
+        # Capture, process, display loop
         while True:
             # Read a new frame
             ok, self.frame = self.video.read()
+            w, h, ch = self.frame.shape
+            self.frame = cv2.resize(self.frame, (int(h/2), int(w/2)), interpolation=cv2.INTER_NEAREST)
             display = self.frame.copy() # Frame we'll do all the graphical drawing to
             data_display = np.zeros_like(display, dtype=np.uint8) # Black screen to display data
             if not ok:
@@ -87,15 +89,15 @@ class GestureRecognizer:
 
             if self.bg is None:
                 cv2.putText(display,
-                            "Press 'r' to reset the foreground extraction.", 
-                            self.positions['hand_pose'], 
-                            cv2.FONT_HERSHEY_SIMPLEX, 
+                            "Press 'r' to reset the foreground extraction.",
+                            self.positions['hand_pose'],
+                            cv2.FONT_HERSHEY_SIMPLEX,
                             0.75, (0, 127, 64), 2)
                 cv2.imshow("display", display)
 
                 k = cv2.waitKey(1) & 0xff
                 if k == 27: break # ESC pressed
-                elif k == 114 or k == 108: 
+                elif k == 114 or k == 108:
                     # r pressed
                     self.bg = self.frame.copy()
                     self.hand_bbox = (116, 116, 170, 170)
@@ -106,7 +108,7 @@ class GestureRecognizer:
                 foreground_display = foreground.copy()
 
                 # Get hand from mask using the bounding box
-                hand_crop = mask[int(self.hand_bbox[1]):int(self.hand_bbox[1]+self.hand_bbox[3]), 
+                hand_crop = mask[int(self.hand_bbox[1]):int(self.hand_bbox[1]+self.hand_bbox[3]),
                                  int(self.hand_bbox[0]):int(self.hand_bbox[0]+self.hand_bbox[2])]
 
                 # Update tracker
@@ -119,54 +121,54 @@ class GestureRecognizer:
                     prediction = self.recognizer.predict(hand_crop_resized)
                     predi = prediction[0].argmax() # Get the index of the greatest confidence
                     gesture = self.CLASSES[predi]
-                    
+
                     for i, pred in enumerate(prediction[0]):
                         # Draw confidence bar for each gesture
                         barx = self.positions['hand_pose'][0]
                         bary = 60 + i*60
                         bar_height = 20
                         bar_length = int(400 * pred) + barx # calculate length of confidence bar
-                        
+
                         # Make the most confidence prediction green
                         if i == predi:
                             colour = (0, 255, 0)
                         else:
                             colour = (0, 0, 255)
-                        
-                        cv2.putText(data_display, 
-                                    "{}: {}".format(self.CLASSES[i], pred), 
-                                    (self.positions['hand_pose'][0], 30 + i*60), 
-                                    cv2.FONT_HERSHEY_SIMPLEX, 
+
+                        cv2.putText(data_display,
+                                    "{}: {}".format(self.CLASSES[i], pred),
+                                    (self.positions['hand_pose'][0], 30 + i*60),
+                                    cv2.FONT_HERSHEY_SIMPLEX,
                                     0.75, (255, 255, 255), 2)
-                        cv2.rectangle(data_display, 
-                                      (barx, bary), 
-                                      (bar_length, 
-                                      bary - bar_height), 
-                                      colour, 
+                        cv2.rectangle(data_display,
+                                      (barx, bary),
+                                      (bar_length,
+                                      bary - bar_height),
+                                      colour,
                                       -1, 1)
-                    
-                    cv2.putText(display, 
-                                "hand pose: {}".format(gesture), 
-                                self.positions['hand_pose'], 
-                                cv2.FONT_HERSHEY_SIMPLEX, 
+
+                    cv2.putText(display,
+                                "hand pose: {}".format(gesture),
+                                self.positions['hand_pose'],
+                                cv2.FONT_HERSHEY_SIMPLEX,
                                 0.75, (0, 0, 255), 2)
-                    cv2.putText(foreground_display, 
-                                "hand pose: {}".format(gesture), 
-                                self.positions['hand_pose'], 
-                                cv2.FONT_HERSHEY_SIMPLEX, 
+                    cv2.putText(foreground_display,
+                                "hand pose: {}".format(gesture),
+                                self.positions['hand_pose'],
+                                cv2.FONT_HERSHEY_SIMPLEX,
                                 0.75, (0, 0, 255), 2)
                 except Exception as ex:
-                    cv2.putText(display, 
-                                "hand pose: error", 
-                                self.positions['hand_pose'], 
-                                cv2.FONT_HERSHEY_SIMPLEX, 
+                    cv2.putText(display,
+                                "hand pose: error",
+                                self.positions['hand_pose'],
+                                cv2.FONT_HERSHEY_SIMPLEX,
                                 0.75, (0, 0, 255), 2)
-                    cv2.putText(foreground_display, 
-                                "hand pose: error", 
-                                self.positions['hand_pose'], 
-                                cv2.FONT_HERSHEY_SIMPLEX, 
-                                0.75, (0, 0, 255), 2)    
-                
+                    cv2.putText(foreground_display,
+                                "hand pose: error",
+                                self.positions['hand_pose'],
+                                cv2.FONT_HERSHEY_SIMPLEX,
+                                0.75, (0, 0, 255), 2)
+
                 # Draw bounding box
                 p1 = (int(self.hand_bbox[0]), int(self.hand_bbox[1]))
                 p2 = (int(self.hand_bbox[0] + self.hand_bbox[2]), int(self.hand_bbox[1] + self.hand_bbox[3]))
@@ -190,20 +192,20 @@ class GestureRecognizer:
                 cv2.putText(display, "FPS : " + str(int(fps)), self.positions['fps'], cv2.FONT_HERSHEY_SIMPLEX, 0.65, (50, 170, 50), 2)
 
                 # Display pause command text
-                cv2.putText(foreground_display, 
-                            "hold 'r' to recalibrate until the screen is black", 
-                            (15, 400), 
+                cv2.putText(foreground_display,
+                            "hold 'r' to recalibrate until the screen is black",
+                            (15, 400),
                             cv2.FONT_HERSHEY_SIMPLEX,
                             0.65, (0, 0, 255), 2)
-                cv2.putText(foreground_display, 
-                            "to recalibrate", 
-                            (15, 420), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 
+                cv2.putText(foreground_display,
+                            "to recalibrate",
+                            (15, 420),
+                            cv2.FONT_HERSHEY_SIMPLEX,
                             0.65, (0, 0, 255), 2)
-                cv2.putText(foreground_display, 
-                            "press 'p' to return to paused state", 
-                            (15, 450), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 
+                cv2.putText(foreground_display,
+                            "press 'p' to return to paused state",
+                            (15, 450),
+                            cv2.FONT_HERSHEY_SIMPLEX,
                             0.65, (0, 0, 255), 2)
 
                 # Display foreground_display
@@ -230,7 +232,7 @@ class GestureRecognizer:
                     self.bg = None
                     cv2.destroyAllWindows()
                 elif k != 255: print(k)
-                
+
 if __name__ == "__main__":
     recognizer = GestureRecognizer(0)
     recognizer.run()
